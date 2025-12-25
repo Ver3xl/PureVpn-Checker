@@ -77,6 +77,14 @@ python3 Main_Linux.py
 
 ---
 
+---
+
+## ⚠️ Disclaimer
+
+This tool is for **educational purposes only**. The developer is not responsible for any misuse of this software. Please use it only on accounts you own or have explicit permission to test.
+
+---
+
 <div align="center">
   <p>Made with ❤️ by <a href="https://github.com/Ver3xl">Ver3xl</a></p>
 </div>
