@@ -7,21 +7,9 @@
   </p>
 
   <p>
-    <a href="https://github.com/purevpn-checker/graphs/contributors">
-      <img src="https://img.shields.io/github/contributors/vishal/purevpn-checker?style=for-the-badge&color=blue" alt="Contributors" />
-    </a>
-    <a href="https://github.com/purevpn-checker/network/members">
-      <img src="https://img.shields.io/github/forks/vishal/purevpn-checker?style=for-the-badge&color=orange" alt="Forks" />
-    </a>
-    <a href="https://github.com/purevpn-checker/stargazers">
-      <img src="https://img.shields.io/github/stars/vishal/purevpn-checker?style=for-the-badge&color=yellow" alt="Stars" />
-    </a>
-    <a href="https://github.com/purevpn-checker/issues">
-      <img src="https://img.shields.io/github/issues/vishal/purevpn-checker?style=for-the-badge&color=red" alt="Issues" />
-    </a>
-    <a href="https://github.com/purevpn-checker/blob/master/LICENSE.txt">
-      <img src="https://img.shields.io/github/license/vishal/purevpn-checker?style=for-the-badge&color=green" alt="License" />
-    </a>
+    <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+    <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-green?style=for-the-badge&logo=linux&logoColor=white" alt="Platform" />
+    <img src="https://img.shields.io/badge/License-MIT-purple?style=for-the-badge" alt="License" />
   </p>
 
   <h4>
@@ -31,6 +19,16 @@
     <a href="#-community--support">Support</a>
   </h4>
 </div>
+
+---
+
+## 🔗 Community & Support
+
+> [!NOTE]
+> Join our community regarding updates and support!
+
+*   Telegram: [t.me/meowleak](https://t.me/meowleak)
+*   Discord: [discord.gg/a4PxpEMFcf](https://discord.gg/a4PxpEMFcf)
 
 ---
 
@@ -76,20 +74,6 @@ python main.py
 ```bash
 python3 Main_Linux.py
 ```
-
-## 🔗 Community & Support
-
-> **Note**  
-> Join our community for updates, configs, and support!
-
-<div align="left">
-  <a href="https://t.me/meowleak">
-    <img src="https://img.shields.io/badge/Telegram-Join%20Channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
-  </a>
-  <a href="https://discord.gg/a4PxpEMFcf">
-    <img src="https://img.shields.io/badge/Discord-Join%20Server-7289DA?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
-  </a>
-</div>
 
 ---
 
