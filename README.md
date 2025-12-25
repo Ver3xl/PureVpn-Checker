@@ -9,7 +9,6 @@
   <p>
     <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
     <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-green?style=for-the-badge&logo=linux&logoColor=white" alt="Platform" />
-    <img src="https://img.shields.io/badge/License-MIT-purple?style=for-the-badge" alt="License" />
   </p>
 
   <h4>
