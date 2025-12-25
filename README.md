@@ -94,5 +94,5 @@ python3 Main_Linux.py
 ---
 
 <div align="center">
-  <p>Made with ❤️ by <a href="https://github.com/vishal">Antigravity</a></p>
+  <p>Made with ❤️ by <a href="https://github.com/Ver3xl">Ver3xl</a></p>
 </div>
