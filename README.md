@@ -27,7 +27,6 @@
 > Join our community regarding updates and support!
 
 *   Telegram: [t.me/meowleak](https://t.me/meowleak)
-*   Discord: [discord.gg/a4PxpEMFcf](https://discord.gg/a4PxpEMFcf)
 
 ---
 
