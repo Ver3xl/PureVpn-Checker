@@ -433,7 +433,7 @@ def check_account(email, password):
                 if plan_item["expiry_ts"] != 0 and plan_item["expiry_ts"] < current_time:
                      is_this_expired = True
                 
-                if "expired" in str(name).lower():
+                if "expired" in str(name).lower() or "no subscription" in str(name).lower():
                      is_this_expired = True
                 
                 if not name or str(name).strip() == "":
@@ -454,15 +454,16 @@ def check_account(email, password):
             masked_pwd = "*" * 8
             masked_line = f"{email}:{masked_pwd} | {capture}"
             
-            if all_expired:
+            if is_free:
+                free += 1
+                log("FREE", masked_line)
+                save_hit(FREE_FILE, line)
+
+            elif all_expired:
                 expired += 1 
                 log("EXPIRED", masked_line)
                 save_hit(EXPIRED_FILE, line)
             
-            elif is_free and all_expired:
-                free += 1
-                log("FREE", masked_line)
-                save_hit(FREE_FILE, line)
             else:
                 hits += 1
                 log("HIT", masked_line)
